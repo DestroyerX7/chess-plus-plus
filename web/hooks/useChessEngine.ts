@@ -9,6 +9,7 @@ export default function useChessEngine() {
     "rnbqkbnrpppppppp00000000000000000000000000000000PPPPPPPPRNBQKBNR",
   );
   const [legalMoves, setLegalMoves] = useState<number[]>([]);
+  const [evaluation, setEvaluation] = useState(0);
 
   useEffect(() => {
     workerRef.current = new Worker(
@@ -22,6 +23,8 @@ export default function useChessEngine() {
         setReady(true);
       } else if (type === "playBestMove") {
         setFen(e.data.fen);
+
+        workerRef.current?.postMessage({ type: "getEval" });
       } else if (type === "getLegalMoves") {
         setLegalMoves(e.data.legalMoves);
       } else if (type === "playMove") {
@@ -29,6 +32,8 @@ export default function useChessEngine() {
         setLegalMoves([]);
 
         workerRef.current?.postMessage({ type: "playBestMove" });
+      } else if (type === "getEval") {
+        setEvaluation(e.data.evaluation);
       }
     };
 
@@ -43,5 +48,6 @@ export default function useChessEngine() {
     fen,
     legalMoves,
     clearLegalMoves: () => setLegalMoves([]),
+    evaluation,
   };
 }

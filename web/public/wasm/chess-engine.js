@@ -1590,6 +1590,7 @@ var _set_position = Module['_set_position'] = makeInvalidEarlyAccess('_set_posit
 var _play_move = Module['_play_move'] = makeInvalidEarlyAccess('_play_move');
 var _play_best_move = Module['_play_best_move'] = makeInvalidEarlyAccess('_play_best_move');
 var _get_legal_moves = Module['_get_legal_moves'] = makeInvalidEarlyAccess('_get_legal_moves');
+var _get_eval = Module['_get_eval'] = makeInvalidEarlyAccess('_get_eval');
 var _fflush = makeInvalidEarlyAccess('_fflush');
 var _strerror = makeInvalidEarlyAccess('_strerror');
 var _emscripten_stack_init = makeInvalidEarlyAccess('_emscripten_stack_init');
@@ -1608,6 +1609,7 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['play_move'] != 'undefined', 'missing Wasm export: play_move');
   assert(typeof wasmExports['play_best_move'] != 'undefined', 'missing Wasm export: play_best_move');
   assert(typeof wasmExports['get_legal_moves'] != 'undefined', 'missing Wasm export: get_legal_moves');
+  assert(typeof wasmExports['get_eval'] != 'undefined', 'missing Wasm export: get_eval');
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
   assert(typeof wasmExports['strerror'] != 'undefined', 'missing Wasm export: strerror');
   assert(typeof wasmExports['emscripten_stack_init'] != 'undefined', 'missing Wasm export: emscripten_stack_init');
@@ -1623,6 +1625,7 @@ function assignWasmExports(wasmExports) {
   _play_move = Module['_play_move'] = createExportWrapper('play_move', wasmExports['play_move'], 2);
   _play_best_move = Module['_play_best_move'] = createExportWrapper('play_best_move', wasmExports['play_best_move'], 0);
   _get_legal_moves = Module['_get_legal_moves'] = createExportWrapper('get_legal_moves', wasmExports['get_legal_moves'], 1);
+  _get_eval = Module['_get_eval'] = createExportWrapper('get_eval', wasmExports['get_eval'], 0);
   _fflush = createExportWrapper('fflush', wasmExports['fflush'], 1);
   _strerror = createExportWrapper('strerror', wasmExports['strerror'], 1);
   _emscripten_stack_init = wasmExports['emscripten_stack_init'];

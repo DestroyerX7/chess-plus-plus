@@ -30,5 +30,9 @@ self.onmessage = async (e) => {
     const fen: string = Module.ccall("play_move", "string", ["number", "number"], [e.data.fromSquare, e.data.toSquare]);
 
     self.postMessage({ type: "playMove", fen });
+  } else if (type === "getEval") {
+    const evaluation: number = Module.ccall("get_eval", "number", null, null);
+
+    self.postMessage({ type: "getEval", evaluation });
   }
 };

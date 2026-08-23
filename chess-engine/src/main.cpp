@@ -14,6 +14,9 @@ struct Position
     uint8_t color_to_move = 0;
 
     Piece pieces[64];
+
+    uint8_t castling_rights = 0xf;
+    uint8_t has_castled = 0;
 };
 
 struct ChessboardRing
@@ -26,6 +29,7 @@ struct Unmove
 {
     Move move = 0;
     Piece captured_piece = 0;
+    uint8_t castling_rights = 0;
 };
 
 static Position position;
@@ -118,6 +122,16 @@ double evaluate_position(const Position &position)
         eval -= black_chessboard_ring_piece_count * chessboard_ring.value;
     }
 
+    if ((position.has_castled & 1) != 0)
+    {
+        eval += 0.5;
+    }
+
+    if ((position.has_castled & 2) != 0)
+    {
+        eval -= 0.5;
+    }
+
     return eval;
 }
 
@@ -142,6 +156,31 @@ void make_move(const Move &move, Position &position)
 
     int move_piece_type = piece_to_type(position.pieces[from_square]);
 
+    if (position.pieces[from_square] == 6)
+    {
+        position.castling_rights &= 0xc;
+    }
+    else if (position.pieces[from_square] == -6)
+    {
+        position.castling_rights &= 0x3;
+    }
+    else if (move_piece_type == 3 && from_square == 7)
+    {
+        position.castling_rights &= 0xe;
+    }
+    else if (move_piece_type == 3 && from_square == 0)
+    {
+        position.castling_rights &= 0xd;
+    }
+    else if (move_piece_type == 3 && from_square == 63)
+    {
+        position.castling_rights &= 0xb;
+    }
+    else if (move_piece_type == 3 && from_square == 56)
+    {
+        position.castling_rights &= 0x7;
+    }
+
     int move_color = position.color_to_move;
     int opposite_color = position.color_to_move == 0 ? 1 : 0;
 
@@ -159,6 +198,65 @@ void make_move(const Move &move, Position &position)
         position.piece_bitboards[move_color][move_piece_type] |= to_square_bitboard;
 
         position.pieces[to_square] = position.pieces[from_square];
+    }
+    else if (flag == 2)
+    {
+        position.piece_bitboards[move_color][move_piece_type] |= to_square_bitboard;
+
+        position.pieces[to_square] = position.pieces[from_square];
+
+        if (to_square == 6)
+        {
+            position.piece_bitboards[0][3] &= ~(1ULL << 7);
+            position.piece_bitboards[0][3] |= 1ULL << 5;
+
+            position.pieces[7] = 0;
+            position.pieces[5] = 4;
+
+            position.occupancy_bitboards[0] &= ~(1ULL << 7);
+            position.occupancy_bitboards[0] |= 1ULL << 5;
+
+            position.has_castled |= 1;
+        }
+        else if (to_square == 2)
+        {
+            position.piece_bitboards[0][3] &= ~1ULL;
+            position.piece_bitboards[0][3] |= 1ULL << 3;
+
+            position.pieces[0] = 0;
+            position.pieces[3] = 4;
+
+            position.occupancy_bitboards[0] &= ~1ULL;
+            position.occupancy_bitboards[0] |= 1ULL << 3;
+
+            position.has_castled |= 1;
+        }
+        else if (to_square == 62)
+        {
+            position.piece_bitboards[1][3] &= ~(1ULL << 63);
+            position.piece_bitboards[1][3] |= 1ULL << 61;
+
+            position.pieces[63] = 0;
+            position.pieces[61] = -4;
+
+            position.occupancy_bitboards[1] &= ~(1ULL << 63);
+            position.occupancy_bitboards[1] |= 1ULL << 61;
+
+            position.has_castled |= 2;
+        }
+        else if (to_square == 58)
+        {
+            position.piece_bitboards[1][3] &= ~(1ULL << 56);
+            position.piece_bitboards[1][3] |= 1ULL << 59;
+
+            position.pieces[56] = 0;
+            position.pieces[59] = -4;
+
+            position.occupancy_bitboards[1] &= ~(1ULL << 56);
+            position.occupancy_bitboards[1] |= 1ULL << 59;
+
+            position.has_castled |= 2;
+        }
     }
     else if (flag == 3)
     {
@@ -197,6 +295,69 @@ void unmake_move(const Unmove &unmove, Position &position)
         position.pieces[from_square] = position.pieces[to_square];
         position.pieces[to_square] = unmove.captured_piece;
     }
+    else if (flag == 2)
+    {
+        int move_piece_type = piece_to_type(position.pieces[to_square]);
+
+        position.piece_bitboards[move_color][move_piece_type] &= ~to_square_bitboard;
+        position.piece_bitboards[move_color][move_piece_type] |= from_square_bitboard;
+
+        position.pieces[from_square] = position.pieces[to_square];
+        position.pieces[to_square] = unmove.captured_piece;
+
+        if (to_square == 6)
+        {
+            position.piece_bitboards[0][3] |= 1ULL << 7;
+            position.piece_bitboards[0][3] &= ~(1ULL << 5);
+
+            position.pieces[7] = 4;
+            position.pieces[5] = 0;
+
+            position.occupancy_bitboards[0] |= 1ULL << 7;
+            position.occupancy_bitboards[0] &= ~(1ULL << 5);
+
+            position.has_castled &= ~1;
+        }
+        else if (to_square == 2)
+        {
+            position.piece_bitboards[0][3] |= 1ULL;
+            position.piece_bitboards[0][3] &= ~(1ULL << 3);
+
+            position.pieces[0] = 4;
+            position.pieces[3] = 0;
+
+            position.occupancy_bitboards[0] |= 1ULL;
+            position.occupancy_bitboards[0] &= ~(1ULL << 3);
+
+            position.has_castled &= ~1;
+        }
+        else if (to_square == 62)
+        {
+            position.piece_bitboards[1][3] |= 1ULL << 63;
+            position.piece_bitboards[1][3] &= ~(1ULL << 61);
+
+            position.pieces[63] = -4;
+            position.pieces[61] = 0;
+
+            position.occupancy_bitboards[1] |= 1ULL << 63;
+            position.occupancy_bitboards[1] &= ~(1ULL << 61);
+
+            position.has_castled &= ~2;
+        }
+        else if (to_square == 58)
+        {
+            position.piece_bitboards[1][3] |= 1ULL << 56;
+            position.piece_bitboards[1][3] &= ~(1ULL << 59);
+
+            position.pieces[56] = -4;
+            position.pieces[59] = 0;
+
+            position.occupancy_bitboards[1] |= 1ULL << 56;
+            position.occupancy_bitboards[1] &= ~(1ULL << 59);
+
+            position.has_castled &= ~2;
+        }
+    }
     else if (flag == 3)
     {
         int move_piece_type = 0;
@@ -219,6 +380,8 @@ void unmake_move(const Unmove &unmove, Position &position)
     }
 
     position.occupancy_bitboards[2] = position.occupancy_bitboards[0] | position.occupancy_bitboards[1];
+
+    position.castling_rights = unmove.castling_rights;
 
     position.color_to_move = move_color;
 }
@@ -548,6 +711,37 @@ void generate_all_moves(Move moves[], int &length, const Position &position)
 
         kings_bitboard &= kings_bitboard - 1;
     }
+
+    if (position.color_to_move == 0)
+    {
+        if ((position.castling_rights & 0x1) != 0 && position.pieces[4] == 6 && position.pieces[5] == 0 && position.pieces[6] == 0 && position.pieces[7] == 4)
+        {
+            Move move = (2 << 12) | (4 << 6) | 6;
+            moves[length] = move;
+            length++;
+        }
+        else if ((position.castling_rights & 0x2) != 0 && position.pieces[4] == 6 && position.pieces[3] == 0 && position.pieces[2] == 0 && position.pieces[1] == 0 && position.pieces[0] == 4)
+        {
+            Move move = (2 << 12) | (4 << 6) | 2;
+            moves[length] = move;
+            length++;
+        }
+    }
+    else
+    {
+        if ((position.castling_rights & 0x4) != 0 && position.pieces[60] == -6 && position.pieces[61] == 0 && position.pieces[62] == 0 && position.pieces[63] == -4)
+        {
+            Move move = (2 << 12) | (60 << 6) | 62;
+            moves[length] = move;
+            length++;
+        }
+        else if ((position.castling_rights & 0x8) != 0 && position.pieces[60] == -6 && position.pieces[59] == 0 && position.pieces[58] == 0 && position.pieces[57] == 0 && position.pieces[56] == -4)
+        {
+            Move move = (2 << 12) | (60 << 6) | 58;
+            moves[length] = move;
+            length++;
+        }
+    }
 }
 
 double search(Position &position, int depth, double alpha = std::numeric_limits<double>::lowest(),
@@ -568,7 +762,7 @@ double search(Position &position, int depth, double alpha = std::numeric_limits<
     for (int i = 0; i < length; i++)
     {
         int to_square = moves[i] & 0x3f;
-        Unmove unmove = {moves[i], position.pieces[to_square]};
+        Unmove unmove = {moves[i], position.pieces[to_square], position.castling_rights};
 
         make_move(moves[i], position);
 
@@ -612,7 +806,7 @@ Move get_best_move(Position &position, int depth, double alpha = std::numeric_li
     for (int i = 0; i < length; i++)
     {
         int to_square = moves[i] & 0x3f;
-        Unmove unmove = {moves[i], position.pieces[to_square]};
+        Unmove unmove = {moves[i], position.pieces[to_square], position.castling_rights};
 
         make_move(moves[i], position);
 
@@ -862,6 +1056,15 @@ extern "C"
             move |= 3 << 12;
         }
 
+        if (position.pieces[from_square] == 6 && from_square == 4 && to_square == 6)
+        {
+            move |= 2 << 12;
+        }
+        else if (position.pieces[from_square] == 6 && from_square == 4 && to_square == 2)
+        {
+            move |= 2 << 12;
+        }
+
         make_move(move, position);
 
         static std::string position_string;
@@ -872,7 +1075,7 @@ extern "C"
     EMSCRIPTEN_KEEPALIVE
     const char *play_best_move()
     {
-        Move best_move = get_best_move(position, 6);
+        Move best_move = get_best_move(position, 7);
         make_move(best_move, position);
 
         static std::string position_string;
@@ -922,6 +1125,15 @@ extern "C"
         else if (piece_type == 5)
         {
             moves_bitboard = get_king_moves_bitboard(from_square, position);
+
+            if ((position.castling_rights & 0x1) != 0 && position.pieces[4] == 6 && position.pieces[5] == 0 && position.pieces[6] == 0 && position.pieces[7] == 4)
+            {
+                moves_bitboard |= 1ULL << 6;
+            }
+            else if ((position.castling_rights & 0x2) != 0 && position.pieces[4] == 6 && position.pieces[3] == 0 && position.pieces[2] == 0 && position.pieces[1] == 0 && position.pieces[0] == 4)
+            {
+                moves_bitboard |= 1ULL << 2;
+            }
         }
 
         while (moves_bitboard != 0)
@@ -933,5 +1145,11 @@ extern "C"
         }
 
         return legal_moves.c_str();
+    }
+
+    EMSCRIPTEN_KEEPALIVE
+    double get_eval()
+    {
+        return evaluate_position(position);
     }
 }
