@@ -1075,7 +1075,7 @@ extern "C"
     EMSCRIPTEN_KEEPALIVE
     const char *play_best_move()
     {
-        Move best_move = get_best_move(position, 7);
+        Move best_move = get_best_move(position, 6);
         make_move(best_move, position);
 
         static std::string position_string;
